@@ -1,3 +1,5 @@
+const u_basename = location.pathname;
+
 function uQ(e, t) {
   for (var n = 0; n < t.length; n++) {
     const r = t[n];
@@ -9846,7 +9848,7 @@ function Bve(e) {
   let o = {},
     i = Xf(e.routes, a, void 0, o),
     s,
-    c = e.basename || "/",
+    c = e.basename || u_basename,
     l = e.unstable_dataStrategy || Uve,
     u = e.unstable_patchRoutesOnMiss,
     d = gn(
@@ -12717,7 +12719,7 @@ function zge(e) {
       }),
       [n]
     ),
-    C = n.basename || "/",
+    C = n.basename || u_basename,
     A = v.useMemo(
       () => ({ router: n, navigator: S, static: !1, basename: C }),
       [n, S, C]
