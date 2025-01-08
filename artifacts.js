@@ -36060,7 +36060,10 @@ const eSe = ["initialCode", "transformCode"],
       r = BB(e, eSe);
     const [a, o] = v.useState(t),
       { element: i, error: s } = L5e(el({ code: n ? n(a) : a }, r));
-    window.changeReactCode = o
+    window.changeReactCode = (code) => {
+      window.initialCode = code;
+      o(code);
+    }
     return (
       v.useEffect(() => {
         o(t);
