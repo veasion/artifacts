@@ -64,7 +64,7 @@
     window.addEventListener("message", function(event) {
         if (event.data && event.data.type === "changeReactCode") {
             window.changeReactCode(event.data.code);
-            event.data.title && document.title = event.data.title;
+            document.title = event.data.title || document.title;
         }
     });
 
