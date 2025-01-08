@@ -60,7 +60,12 @@
     }
 
     window.initialCode = "<span>loading...</span>";
-    window.changeReactCode = (code) => { window.initialCode = code; }
+    window.changeReactCode = (code) => { window.initialCode = code; };
+    window.addEventListener("message", function(event) {
+        if (event.data && event.data.type === "changeReactCode") {
+            window.changeReactCode(event.data.code);
+        }
+    });
 
     var errNum = 0;
     var time = setInterval(() => {
