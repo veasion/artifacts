@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+    <script src="./tailwind.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          container: {
+            center: true,
+            padding: '2rem',
+            screens: {
+              '2xl': '1400px',
+            },
+          },
+          extend: {
+            keyframes: {
+              'accordion-down': {
+                from: { height: '0' },
+                to: { height: 'var(--radix-accordion-content-height)' },
+              },
+              'accordion-up': {
+                from: { height: 'var(--radix-accordion-content-height)' },
+                to: { height: '0' },
+              },
+            },
+            animation: {
+              'accordion-down': 'accordion-down 0.2s ease-out',
+              'accordion-up': 'accordion-up 0.2s ease-out',
+            },
+          },
+        },
+      }
+
+      // 初始化代码
+      window.initialCode = "import { Card, CardContent, CardHeader } from '@/components/ui/card';\nimport { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';\n\nconst paperData = [\n  {\n    id: 1,\n    title: \"AutoGLM: Autonomous Foundation Agents for GUIs\",\n    year: 2024,\n    focus: \"Foundation agents for GUI control\",\n    approach: \"Large language models with autonomous control\",\n    mainResults: \"55.2% success rate on VAB-WebArena-Lite, 96.2% on OpenTable tasks\"\n  },\n  {\n    id: 2, \n    title: \"Classifying and Qualifying GUI Defects\",\n    year: 2017,\n    focus: \"GUI testing and fault detection\",\n    approach: \"GUI fault model and empirical analysis\",\n    mainResults: \"Comprehensive GUI fault classification framework\"\n  },\n  {\n    id: 3,\n    title: \"You Only Look at Screens\",\n    year: 2024,\n    focus: \"Autonomous GUI agents\",\n    approach: \"Multimodal chain-of-action technique\",\n    mainResults: \"90% action type accuracy, 74% overall success rate\"\n  },\n  {\n    id: 4,\n    title: \"Ponder & Press\",\n    year: 2024,\n    focus: \"Visual GUI automation\",\n    approach: \"Divide-and-conquer with MLLMs\",\n    mainResults: \"22.5% improvement on ScreenSpot benchmark\"\n  }\n];\n\nconst yearData = [\n  { year: 2017, count: 1 },\n  { year: 2024, count: 3 }\n];\n\nconst approachCategorization = [\n  { name: \"LLM-based\", value: 2 },\n  { name: \"Traditional ML\", value: 1 },\n  { name: \"Empirical Analysis\", value: 1 }\n];\n\nconst COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];\n\nexport default function PaperComparisonDashboard() {\n  return (\n    <div className=\"p-4 space-y-6\">\n      <h1 className=\"text-2xl font-bold mb-4\">GUI Research Papers Analysis Dashboard</h1>\n\n      <div className=\"grid grid-cols-1 md:grid-cols-2 gap-4\">\n        {/* Timeline Chart */}\n        <Card>\n          <CardHeader>Publication Timeline</CardHeader>\n          <CardContent>\n            <div className=\"h-[300px]\">\n              <ResponsiveContainer width=\"100%\" height=\"100%\">\n                <BarChart data={yearData}>\n                  <CartesianGrid strokeDasharray=\"3 3\" />\n                  <XAxis dataKey=\"year\" />\n                  <YAxis />\n                  <Tooltip />\n                  <Bar dataKey=\"count\" fill=\"#8884d8\" />\n                </BarChart>\n              </ResponsiveContainer>\n            </div>\n          </CardContent>\n        </Card>\n\n        {/* Approach Distribution */}\n        <Card>\n          <CardHeader>Research Approach Distribution</CardHeader>\n          <CardContent>\n            <div className=\"h-[300px]\">\n              <ResponsiveContainer width=\"100%\" height=\"100%\">\n                <PieChart>\n                  <Pie\n                    data={approachCategorization}\n                    cx=\"50%\"\n                    cy=\"50%\"\n                    labelLine={false}\n                    label={({name, percent}) => `${name} (${(percent * 100).toFixed(0)}%)`}\n                    outerRadius={80}\n                    fill=\"#8884d8\"\n                    dataKey=\"value\"\n                  >\n                    {approachCategorization.map((entry, index) => (\n                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />\n                    ))}\n                  </Pie>\n                  <Tooltip />\n                </PieChart>\n              </ResponsiveContainer>\n            </div>\n          </CardContent>\n        </Card>\n      </div>\n\n      {/* Paper Details */}\n      <Card>\n        <CardHeader>Detailed Paper Comparison</CardHeader>\n        <CardContent>\n          <div className=\"overflow-x-auto\">\n            <table className=\"min-w-full table-auto\">\n              <thead>\n                <tr className=\"bg-gray-100\">\n                  <th className=\"px-4 py-2\">Title</th>\n                  <th className=\"px-4 py-2\">Year</th>\n                  <th className=\"px-4 py-2\">Focus</th>\n                  <th className=\"px-4 py-2\">Approach</th>\n                  <th className=\"px-4 py-2\">Main Results</th>\n                </tr>\n              </thead>\n              <tbody>\n                {paperData.map((paper) => (\n                  <tr key={paper.id} className=\"border-b\">\n                    <td className=\"px-4 py-2\">{paper.title}</td>\n                    <td className=\"px-4 py-2\">{paper.year}</td>\n                    <td className=\"px-4 py-2\">{paper.focus}</td>\n                    <td className=\"px-4 py-2\">{paper.approach}</td>\n                    <td className=\"px-4 py-2\">{paper.mainResults}</td>\n                  </tr>\n                ))}\n              </tbody>\n            </table>\n          </div>\n        </CardContent>\n      </Card>\n\n      {/* Key Findings */}\n      <Card>\n        <CardHeader>Key Research Trends & Findings</CardHeader>\n        <CardContent>\n          <ul className=\"list-disc pl-5 space-y-2\">\n            <li>Strong focus on autonomous GUI agents in recent research (2024)</li>\n            <li>Shift towards using large language models and multimodal approaches</li>\n            <li>Increasing emphasis on visual-based methods rather than traditional HTML/accessibility APIs</li>\n            <li>Improved success rates in GUI interaction tasks across different benchmarks</li>\n            <li>Evolution from basic GUI testing to sophisticated autonomous control</li>\n          </ul>\n        </CardContent>\n      </Card>\n    </div>\n  );\n}"
+      // 改变代码函数
+      window.changeReactCode = (code) => {}
+
+      // 测试改变代码函数
+      let count = 0
+      function testChangeCode() {
+        let changeCode = "import React, { useState, useEffect } from 'react';\nimport { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';\nimport { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';\nimport { Button } from \"@/components/ui/button\"\nimport { Card, CardContent, CardHeader, CardTitle } from \"@/components/ui/card\"\nimport { Alert, AlertDescription, AlertTitle } from \"@/components/ui/alert\"\n\nconst generateRandomData = () => {\n  return Array.from({ length: 7 }, (_, i) => ({\n    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],\n    value: Math.floor(Math.random() * 1000)\n  }));\n};\n\nconst RandomChartDashboard = () => {\n  const [data, setData] = useState(generateRandomData());\n  const [trend, setTrend] = useState('');\n\n  useEffect(() => {\n    const firstValue = data[0].value;\n    const lastValue = data[data.length - 1].value;\n    setTrend(lastValue > firstValue ? 'up' : 'down');\n  }, [data]);\n\n  const refreshData = () => {\n    setData(generateRandomData());\n  };\n\n  return (\n    <div className=\"p-4 space-y-4\">\n      <Card>\n        <CardHeader>\n          <CardTitle className=\"flex justify-between items-center\">\n            Random Weekly Data\n            <Button onClick={refreshData} variant=\"outline\" size=\"icon\">\n              <RefreshCw className=\"h-4 w-4\" />\n            </Button>\n          </CardTitle>\n        </CardHeader>\n        <CardContent>\n          <ResponsiveContainer width=\"100%\" height={300}>\n            <LineChart data={data}>\n              <CartesianGrid strokeDasharray=\"3 3\" />\n              <XAxis dataKey=\"day\" />\n              <YAxis />\n              <Tooltip />\n              <Legend />\n              <Line type=\"monotone\" dataKey=\"value\" stroke=\"#8884d8\" activeDot={{ r: 8 }} />\n            </LineChart>\n          </ResponsiveContainer>\n        </CardContent>\n      </Card>\n\n      <Alert>\n        <AlertTitle className=\"flex items-center\">\n          Trend\n          {trend === 'up' ? (\n            <TrendingUp className=\"ml-2 h-4 w-4 text-green-500\" />\n          ) : (\n            <TrendingDown className=\"ml-2 h-4 w-4 text-red-500\" />\n          )}\n        </AlertTitle>\n        <AlertDescription>\n          The trend is going {trend}. {trend === 'up' ? 'Great job!' : 'Keep working on improvement.'}\n        </AlertDescription>\n      </Alert>\n    </div>\n  );\n};\n\nexport default RandomChartDashboard;"
+        window.changeReactCode(++count % 2 == 1 ? changeCode : window.initialCode)
+      }
+ 
+    </script>
+  </head>
+  <body class="min-h-screen">
+    <!--自定义-->
+    <div style="text-align: center;margin-top: 20px;">
+      <span style="font-size: 22px;">这是一个报表：</span>
+      <button style="color: blue;" onclick="testChangeCode()">点击改变代码</button>
+    </div>
+    <!-- 这个 root 是渲染报表用的（可以自定义样式） -->
+    <div id="root"></div>
+    <!-- 核心js -->
+    <script type="module" crossorigin src="./artifacts.js"></script>
+  </body>
+</html>
