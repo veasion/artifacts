@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>React 实时编译渲染 - 支持第三方库</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        .container { display: flex; height: 100vh; }
+        .editor { width: 50%; padding: 20px; }
+        .preview { width: 50%; padding: 20px; border-left: 1px solid #ccc; }
+        textarea { width: 100%; height: 500px; font-family: monospace; font-size: 14px; }
+        button { padding: 8px 16px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor">
+            <h3>React 代码编辑器</h3>
+            <select onchange="loadExample(this.value)">
+                <option value="">选择示例</option>
+                <option value="card">卡片组件示例</option>
+                <option value="antd">Ant Design 示例</option>
+            </select>
+            <textarea id="codeInput" placeholder="在这里输入 React 代码...">
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <h1>带卡片的计数器</h1>
+      <Card>
+        <CardHeader>
+          计数器应用
+        </CardHeader>
+        <CardContent>
+          <h2>当前计数: {count}</h2>
+          <div style={{ marginTop: '10px' }}>
+            <button onClick={() => setCount(count + 1)} style={{ marginRight: '10px' }}>
+              增加
+            </button>
+            <button onClick={() => setCount(count - 1)} style={{ marginRight: '10px' }}>
+              减少
+            </button>
+            <button onClick={() => setCount(0)}>
+              重置
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+            </textarea>
+            <br>
+            <button onclick="renderCode()">渲染代码</button>
+        </div>
+        <div class="preview">
+            <h3>预览</h3>
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <script>
+        // 预置库映射
+        const presetLibraries = {
+            'react': {
+                default: React,
+                useState: React.useState,
+                useEffect: React.useEffect,
+                useCallback: React.useCallback,
+                useMemo: React.useMemo,
+                useReducer: React.useReducer,
+                useContext: React.useContext,
+                useRef: React.useRef
+            },
+            '@/components/ui/card': {
+                Card: ({ children, className = '', ...props }) => 
+                    React.createElement('div', { 
+                        className: `card ${className}`, 
+                        style: { 
+                            border: '1px solid #e2e8f0', 
+                            borderRadius: '8px', 
+                            backgroundColor: 'white',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                            margin: '10px 0'
+                        }, 
+                        ...props 
+                    }, children),
+                
+                CardHeader: ({ children, className = '', ...props }) => 
+                    React.createElement('div', { 
+                        className: `card-header ${className}`, 
+                        style: { 
+                            padding: '16px 20px 0 20px', 
+                            fontWeight: '600',
+                            fontSize: '18px'
+                        }, 
+                        ...props 
+                    }, children),
+                
+                CardContent: ({ children, className = '', ...props }) => 
+                    React.createElement('div', { 
+                        className: `card-content ${className}`, 
+                        style: { 
+                            padding: '16px 20px 20px 20px' 
+                        }, 
+                        ...props 
+                    }, children)
+            },
+            
+            'antd': {
+                Button: ({ children, type = 'default', onClick, ...props }) => 
+                    React.createElement('button', {
+                        onClick,
+                        style: {
+                            padding: '8px 16px',
+                            border: type === 'primary' ? 'none' : '1px solid #d9d9d9',
+                            backgroundColor: type === 'primary' ? '#1890ff' : 'white',
+                            color: type === 'primary' ? 'white' : '#000',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            marginRight: '8px'
+                        },
+                        ...props
+                    }, children),
+                    
+                Card: ({ title, children, ...props }) => 
+                    React.createElement('div', {
+                        style: {
+                            border: '1px solid #f0f0f0',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            margin: '10px 0'
+                        },
+                        ...props
+                    }, [
+                        title && React.createElement('div', {
+                            key: 'title',
+                            style: {
+                                padding: '16px',
+                                borderBottom: '1px solid #f0f0f0',
+                                fontWeight: '500'
+                            }
+                        }, title),
+                        React.createElement('div', {
+                            key: 'content',
+                            style: { padding: '16px' }
+                        }, children)
+                    ])
+            }
+        };
+
+        // 解析导入语句
+        function parseImports(code) {
+            const imports = {};
+            
+            // 更精确的 import 正则表达式
+            const patterns = [
+                // import React, { useState } from 'react';
+                /import\s+(\w+)\s*,\s*{\s*([^}]+)\s*}\s+from\s+['"]([^'"]+)['"];?\s*/g,
+                // import { Component1, Component2 } from 'module';
+                /import\s*{\s*([^}]+)\s*}\s+from\s+['"]([^'"]+)['"];?\s*/g,
+                // import * as Module from 'module';
+                /import\s+\*\s+as\s+(\w+)\s+from\s+['"]([^'"]+)['"];?\s*/g,
+                // import Module from 'module';
+                /import\s+(\w+)\s+from\s+['"]([^'"]+)['"];?\s*/g
+            ];
+
+            patterns.forEach((pattern, index) => {
+                let match;
+                // 重置正则表达式的 lastIndex
+                pattern.lastIndex = 0;
+                
+                while ((match = pattern.exec(code)) !== null) {
+                    if (index === 0) {
+                        // import React, { useState } from 'react';
+                        const [, defaultImport, namedImports, modulePath] = match;
+                        if (presetLibraries[modulePath]) {
+                            // 默认导入
+                            if (presetLibraries[modulePath].default) {
+                                imports[defaultImport] = presetLibraries[modulePath].default;
+                            }
+                            // 命名导入
+                            const names = namedImports.split(',').map(name => name.trim());
+                            names.forEach(name => {
+                                if (presetLibraries[modulePath][name]) {
+                                    imports[name] = presetLibraries[modulePath][name];
+                                }
+                            });
+                        }
+                    } else if (index === 1) {
+                        // import { Component1, Component2 } from 'module';
+                        const [, namedImports, modulePath] = match;
+                        if (presetLibraries[modulePath]) {
+                            const names = namedImports.split(',').map(name => name.trim());
+                            names.forEach(name => {
+                                if (presetLibraries[modulePath][name]) {
+                                    imports[name] = presetLibraries[modulePath][name];
+                                }
+                            });
+                        }
+                    } else if (index === 2) {
+                        // import * as Module from 'module';
+                        const [, namespaceImport, modulePath] = match;
+                        if (presetLibraries[modulePath]) {
+                            imports[namespaceImport] = presetLibraries[modulePath];
+                        }
+                    } else if (index === 3) {
+                        // import Module from 'module';
+                        const [, defaultImport, modulePath] = match;
+                        if (presetLibraries[modulePath]) {
+                            imports[defaultImport] = presetLibraries[modulePath].default || presetLibraries[modulePath];
+                        }
+                    }
+                }
+            });
+            
+            return imports;
+        }
+
+        // 移除所有 import 和 export 语句
+        function removeImportsAndExports(code) {
+            return code
+                // 移除所有类型的 import 语句
+                .replace(/import\s+(\w+)\s*,\s*{\s*[^}]+\s*}\s+from\s+['"][^'"]+['"];?\s*/g, '')
+                .replace(/import\s*{\s*[^}]+\s*}\s+from\s+['"][^'"]+['"];?\s*/g, '')
+                .replace(/import\s+\*\s+as\s+\w+\s+from\s+['"][^'"]+['"];?\s*/g, '')
+                .replace(/import\s+\w+\s+from\s+['"][^'"]+['"];?\s*/g, '')
+                // 移除 export 语句
+                .replace(/export\s+default\s+\w+;?\s*$/gm, '')
+                .replace(/export\s*{\s*[^}]+\s*};?\s*/g, '')
+                // 清理多余的空行
+                .replace(/\n\s*\n\s*\n/g, '\n\n');
+        }
+
+        // 主渲染函数
+        function rendering(root_element, react_code) {
+            try {
+                console.log('原始代码:', react_code);
+                
+                // 1. 解析导入的库
+                const importedLibraries = parseImports(react_code);
+                console.log('解析的导入:', importedLibraries);
+                
+                // 2. 移除所有 import 和 export 语句
+                const cleanedCode = removeImportsAndExports(react_code);
+                console.log('清理后的代码:', cleanedCode);
+
+                // 3. 使用 Babel 转换 JSX
+                const transformedCode = Babel.transform(cleanedCode, {
+                    presets: [['react', { runtime: 'classic' }]],
+                    plugins: []
+                }).code;
+                console.log('转换后的代码:', transformedCode);
+
+                // 4. 准备执行环境的参数 - 避免重复参数名
+                const baseParams = {
+                    'React': React,
+                    'ReactDOM': ReactDOM
+                };
+                
+                // 合并导入的库，避免重复
+                const allParams = { ...baseParams, ...importedLibraries };
+                
+                // 去重参数名
+                const paramNames = Object.keys(allParams);
+                const paramValues = Object.values(allParams);
+
+                console.log('参数名:', paramNames);
+                console.log('参数值:', paramValues);
+
+                // 5. 创建并执行函数
+                const executeCode = new Function(
+                    ...paramNames,
+                    `
+                    "use strict";
+                    ${transformedCode}
+                    return App;
+                    `
+                );
+
+                const AppComponent = executeCode(...paramValues);
+                console.log('获取的组件:', AppComponent);
+
+                // 6. 渲染组件
+                if (window.currentRoot) {
+                    window.currentRoot.unmount();
+                }
+                
+                window.currentRoot = ReactDOM.createRoot(root_element);
+                window.currentRoot.render(React.createElement(AppComponent));
+
+            } catch (error) {
+                console.error('渲染失败:', error);
+                root_element.innerHTML = `
+                    <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 4px;">
+                        <h4>渲染错误:</h4>
+                        <pre>${error.message}</pre>
+                        <details>
+                            <summary>错误详情</summary>
+                            <pre>${error.stack}</pre>
+                        </details>
+                    </div>
+                `;
+            }
+        }
+
+        function renderCode() {
+            const code = document.getElementById('codeInput').value;
+            const preview = document.getElementById('preview');
+            rendering(preview, code);
+        }
+
+        // 示例代码
+        const examples = {
+            card: `import React, { useState } from 'react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <h1>带卡片的计数器</h1>
+      <Card>
+        <CardHeader>
+          计数器应用
+        </CardHeader>
+        <CardContent>
+          <h2>当前计数: {count}</h2>
+          <div style={{ marginTop: '10px' }}>
+            <button onClick={() => setCount(count + 1)} style={{ marginRight: '10px' }}>
+              增加
+            </button>
+            <button onClick={() => setCount(count - 1)} style={{ marginRight: '10px' }}>
+              减少
+            </button>
+            <button onClick={() => setCount(0)}>
+              重置
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}`,
+            antd: `import React, { useState } from 'react';
+import { Button, Card } from 'antd';
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div style={{ padding: '20px' }}>
+      <h1>Ant Design 示例</h1>
+      <Card title="计数器卡片">
+        <p>当前计数: <strong>{count}</strong></p>
+        <Button type="primary" onClick={() => setCount(count + 1)}>
+          增加
+        </Button>
+        <Button onClick={() => setCount(count - 1)}>
+          减少
+        </Button>
+        <Button onClick={() => setCount(0)}>
+          重置
+        </Button>
+      </Card>
+    </div>
+  );
+}`
+        };
+
+        function loadExample(type) {
+            if (examples[type]) {
+                document.getElementById('codeInput').value = examples[type];
+                renderCode();
+            }
+        }
+
+        // 页面加载时自动渲染
+        window.onload = function() {
+            renderCode();
+        };
+    </script>
+</body>
+</html>
