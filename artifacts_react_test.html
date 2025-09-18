@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>React 实时编译渲染</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        .container { display: flex; height: 100vh; }
+        .editor { width: 50%; padding: 20px; }
+        .preview { width: 50%; padding: 20px; border-left: 1px solid #ccc; }
+        textarea { width: 100%; height: 400px; font-family: monospace; }
+        .counter { text-align: center; padding: 20px; }
+        .buttons button { margin: 5px; padding: 8px 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor">
+            <h3>React 代码编辑器</h3>
+            <textarea id="codeInput" placeholder="在这里输入 React 代码...">
+import React, { useState } from 'react';
+
+function App() {
+  const [count, setCount] = useState(0);
+
+  const increment = () => {
+    setCount(count + 1);
+  };
+
+  const decrement = () => {
+    setCount(count - 1);
+  };
+
+  const reset = () => {
+    setCount(0);
+  };
+
+  return (
+    <div>
+      <h1>简单计数器</h1>
+      <div className="counter">
+        <h2>当前计数: {count}</h2>
+        <div className="buttons">
+          <button onClick={increment}>+1</button>
+          <button onClick={decrement}>-1</button>
+          <button onClick={reset}>重置</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+            </textarea>
+            <button onclick="renderCode()">渲染代码</button>
+        </div>
+        <div class="preview">
+            <h3>预览</h3>
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentRoot = null;
+
+        function rendering(root_element, react_code) {
+            try {
+                // 如果之前有渲染的内容，先卸载
+                if (currentRoot) {
+                    currentRoot.unmount();
+                }
+
+                // 清理 import 语句（浏览器环境不需要）
+                const cleanedCode = react_code
+                    .replace(/import\s+.*?from\s+['"][^'"]*['"];?\s*/g, '')
+                    .replace(/export\s+default\s+\w+;?\s*$/, '');
+
+                // 使用 Babel 转换 JSX
+                const transformedCode = Babel.transform(cleanedCode, {
+                    presets: ['react'],
+                    plugins: []
+                }).code;
+
+                // 创建执行环境
+                const executeCode = new Function(
+                    'React', 
+                    'ReactDOM', 
+                    'useState', 
+                    'useEffect', 
+                    'useCallback', 
+                    'useMemo',
+                    'useReducer',
+                    'useContext',
+                    `
+                    ${transformedCode}
+                    return App;
+                    `
+                );
+
+                // 执行代码获取组件
+                const AppComponent = executeCode(
+                    React, 
+                    ReactDOM, 
+                    React.useState, 
+                    React.useEffect, 
+                    React.useCallback, 
+                    React.useMemo,
+                    React.useReducer,
+                    React.useContext
+                );
+
+                // 渲染组件
+                currentRoot = ReactDOM.createRoot(root_element);
+                currentRoot.render(React.createElement(AppComponent));
+
+            } catch (error) {
+                console.error('渲染失败:', error);
+                root_element.innerHTML = `
+                    <div style="color: red; padding: 20px; border: 1px solid red; border-radius: 4px;">
+                        <h4>渲染错误:</h4>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        function renderCode() {
+            const code = document.getElementById('codeInput').value;
+            const preview = document.getElementById('preview');
+            rendering(preview, code);
+        }
+
+        // 页面加载时自动渲染一次
+        window.onload = function() {
+            renderCode();
+        };
+    </script>
+</body>
+</html>
